@@ -5,3 +5,4 @@ We use GitHub and RStudio for collaboration, version control, and reproducibilit
 Team Members:
 - Lexi
 - Nichola
+- Ming
