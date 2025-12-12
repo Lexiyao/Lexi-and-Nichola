@@ -1,0 +1,141 @@
+title: "Session 11 Activity – Conducting Research using R"
+knitr::opts_chunk$set(
+echo = TRUE,
+message = FALSE,
+warning = FALSE
+)
+
+library(tidyverse)
+library(readxl)
+
+# Survey data
+
+dat_A  <- read_excel("A.xlsx")
+dat_B  <- read_excel("B.xlsx")
+dat_P  <- read_excel("P.xlsx")
+dat_SE <- read_excel("SouthEast.xlsx")
+
+# Population data
+
+POP <- readRDS("POP.rds")
+
+list(
+dim_A  = dim(dat_A),
+dim_B  = dim(dat_B),
+dim_P  = dim(dat_P),
+dim_SE = dim(dat_SE),
+dim_POP = dim(POP)
+)
+
+# Combine A / B / P
+
+dat_ABP <- bind_rows(dat_A, dat_B, dat_P)
+
+# Clean and align SouthEast data
+
+dat_SE_clean <- dat_SE %>%
+rename(
+PH = Phusical,   # physical health (misspelled in original file)
+MH = Mental      # mental health
+) %>%
+select(Age, Region, PH, MH, Smoker, Belief, SES5, Gender)
+
+# Combined survey dataset
+
+dat_all <- bind_rows(dat_ABP, dat_SE_clean)
+
+glimpse(dat_all)
+
+dat_all_clean <- dat_all %>%
+mutate(
+
+# Binary outcome: belief that condition will get worse
+dat_all_clean <- dat_all %>%
+  mutate(
+    Belief_up = toupper(trimws(Belief)),
+    PH_up     = toupper(trimws(PH)),
+    MH_up     = toupper(trimws(MH))
+  ) %>%
+  mutate(
+    Belief01 = ifelse(Belief_up == "Y" | Belief_up == "YES", 1, 0),
+    PH01     = ifelse(PH_up == "Y" | PH_up == "YES", 1, 0),
+    MH01     = ifelse(MH_up == "Y" | MH_up == "YES", 1, 0)
+  )
+
+# Binary exposures: physical and mental health issues
+PH01 = ifelse(PH %in% c("Y", "YES", "Yes"), 1, 0),
+MH01 = ifelse(MH %in% c("Y", "YES", "Yes"), 1, 0),
+
+Gender = factor(Gender),
+SES5   = factor(SES5),
+Region = factor(Region)
+```
+
+)
+
+summary(select(dat_all_clean, Belief01, PH01, MH01))
+
+prev_PH <- mean(dat_all_clean$PH01, na.rm = TRUE)
+prev_MH <- mean(dat_all_clean$MH01, na.rm = TRUE)
+
+prev_PH
+prev_MH
+ph_by_region <- dat_all_clean %>%
+group_by(Region) %>%
+summarise(
+n = n(),
+PH_prev = mean(PH01, na.rm = TRUE)
+)
+
+ph_by_region
+ggplot(ph_by_region, aes(x = Region, y = PH_prev)) +
+geom_col() +
+labs(
+title = "Prevalence of physical health issues by region",
+x = "Region",
+y = "Prevalence of PH01 = 1"
+)
+
+model_main <- glm(
+Belief01 ~ PH01 + MH01 + Age + Gender + SES5,
+data = dat_all_clean,
+family = binomial
+)
+
+summary(model_main)
+
+or_main <- exp(cbind(OR = coef(model_main), confint(model_main)))
+or_main
+
+sample_region <- dat_all_clean %>%
+count(Region) %>%
+mutate(sample_prop = n / sum(n))
+
+sample_region
+
+head(POP)
+
+pop_region <- POP %>%
+group_by(Region) %>%
+summarise(pop_n = sum(Count)) %>%
+mutate(pop_prop = pop_n / sum(pop_n))
+
+pop_region
+
+compare_region <- left_join(sample_region, pop_region, by = "Region")
+compare_region
+
+compare_region %>%
+pivot_longer(
+cols = c(sample_prop, pop_prop),
+names_to = "source",
+values_to = "prop"
+) %>%
+ggplot(aes(x = Region, y = prop, fill = source)) +
+geom_col(position = "dodge") +
+labs(
+title = "Sample vs population distribution by region",
+x = "Region",
+y = "Proportion",
+fill = "Source"
+)
