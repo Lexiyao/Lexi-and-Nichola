@@ -2,36 +2,30 @@ print("Hello GitHub from RStudio!")
 print("Hello GitHub from RStudio!")
 
 library(dplyr)
-setwd("/Users/lixiaohong/Desktop/teamwork")
-
-ds1 <- read.csv("A.csv")
-ds2 <- read.csv("B.csv")
-ds3 <- read.csv("P.csv")
-ds4 <- read.csv("SouthEast.csv")
-df_all <- bind_rows(ds1, ds2, ds3, ds4)
-dim(df_all) 
-
-df_all$PH_clean <- tolower(df_all$PH)   # 全部转换成小写
-df_all$PH_clean <- ifelse(df_all$PH_clean %in% c("yes", "y", "1"), 1, 0)
-df_all$PH_clean <- ifelse(is.na(df_all$PH), NA,
-                          ifelse(tolower(df_all$PH) %in% c("yes", "y", "1"), 1, 0))
-df_all$MH_clean <- tolower(df_all$MH)
-df_all$MH_clean <- ifelse(df_all$MH_clean %in% c("yes", "y", "1"), 1, 0)
-df_all$MH_clean <- ifelse(is.na(df_all$MH), NA,
-                          ifelse(tolower(df_all$MH) %in% c("yes", "y", "1"), 1, 0))
-table(df_all$PH_clean, useNA = "ifany")
-table(df_all$MH_clean, useNA = "ifany")
-
-pop <- readRDS("POP.rds")
-str(pop)
-head(pop)
-summary(pop)
-names(pop)
+setwd("Desktop/teamwork")
 
 
+#q1
+dat <- Complete_Data_Set  # 你的数据框名字按实际改
 
+# 把 Y/N 变成 1/0
+dat$belief_worse <- ifelse(dat$Belief == "Y", 1, 0)
 
-data <- read.csv("/Users/lixiaohong/Desktop/Complete Data Set.csv")
+# 定义 ongoing health issue：只要 PH 或 MH 有一个是 Y 就算有
+dat$ongoing_health <- ifelse(dat$PH == "Y" | dat$MH == "Y", 1, 0)
+
+# 快速检查
+table(dat$Belief, useNA = "ifany")
+table(dat$belief_worse, dat$ongoing_health, useNA = "ifany")
+
+fit1 <- glm(belief_worse ~ ongoing_health,
+            family = binomial(),
+            data = dat)
+
+summary(fit1)
+
+#q2
+data <- read.csv("Complete Data Set.csv")
 # Load necessary libraries
 library(dplyr)
 library(tidyr)
@@ -39,9 +33,10 @@ library(ggplot2)
 library(broom)  # For tidy model outputs
 library(readr)  # For reading CSV with better handling
 
+
 # Assuming the data is in a file named "Complete Data Set.csv"
 # If the data is provided as text, you can use read_csv(text = "...") but here we assume file access
-data <- read_csv("/Users/lixiaohong/Desktop/Complete Data Set.csv", col_types = cols(
+data <- read_csv("Complete Data Set.csv", col_types = cols(
   Age = col_character(),  # Age has numbers and NA, so read as char initially
   PH = col_character(),
   MH = col_character(),
